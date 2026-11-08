@@ -235,6 +235,3 @@ HEIC support is kept intact (`pillow-heif`, `libheif`, `libde265`, `libx265`); F
 
 FastAPI · uvicorn · qrcode · fpdf2 · img2pdf · openpyxl · Pillow · pillow-heif · PyInstaller
 
-## License
-
-No license file is included yet. Add one before publishing if you want others to reuse the code — MIT or Apache-2.0 are common choices.

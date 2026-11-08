@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+
+# Build output
+build/
+dist/
+*.spec
+
+# QuickBeam runtime artifacts
+runtime/
+received/
+*.log
+.tmp/
+
+# OS noise
+.DS_Store
+Thumbs.db

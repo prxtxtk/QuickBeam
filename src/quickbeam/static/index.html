@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QuickBeam Bridge</title>
+  <style>
+    :root { --bg: #0f172a; --card: #1e293b; --text: #f8fafc; --accent: #3b82f6; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); padding: 16px; margin: 0; }
+    .card { background: var(--card); padding: 20px; border-radius: 14px; max-width: 440px; margin: 20px auto; box-shadow: 0 4px 16px rgba(0,0,0,0.3); }
+    h2 { margin-top: 0; font-size: 1.25rem; }
+    .field { margin-bottom: 14px; }
+    label { display: block; font-size: 0.85rem; margin-bottom: 6px; color: #94a3b8; }
+    input[type="file"], select, button { width: 100%; box-sizing: border-box; padding: 12px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: #fff; font-size: 0.95rem; }
+    button { background: var(--accent); border: none; font-weight: 600; cursor: pointer; margin-top: 10px; }
+    #progress-wrap { display: none; margin-top: 15px; background: #334155; border-radius: 6px; overflow: hidden; height: 10px; }
+    #progress-bar { width: 0%; height: 100%; background: var(--accent); transition: width 0.1s linear; }
+    #status { margin-top: 12px; font-size: 0.85rem; text-align: center; color: #94a3b8; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>QuickBeam File Bridge</h2>
+    <form id="uploadForm">
+      <div class="field">
+        <label>Select Files (Photos, Documents, CSV):</label>
+        <input type="file" id="fileInput" name="files" multiple required />
+      </div>
+      <div class="field">
+        <label>Transformation Action:</label>
+        <select id="actionSelect" name="action">
+          <option value="raw">None (Raw Transfer to PC)</option>
+          <option value="images_to_pdf">Merge Images -> PDF</option>
+          <option value="md_to_pdf">Markdown -> PDF</option>
+          <option value="csv_to_xlsx">CSV -> Excel (.xlsx)</option>
+          <option value="docx_to_md">DOCX -> Markdown</option>
+        </select>
+      </div>
+      <button type="submit" id="btnSubmit">Beam to Computer</button>
+      <div id="progress-wrap"><div id="progress-bar"></div></div>
+      <div id="status"></div>
+    </form>
+  </div>
+  <script>
+    const form = document.getElementById('uploadForm');
+    const fileInput = document.getElementById('fileInput');
+    const actionSelect = document.getElementById('actionSelect');
+    const pWrap = document.getElementById('progress-wrap');
+    const pBar = document.getElementById('progress-bar');
+    const status = document.getElementById('status');
+
+    fileInput.addEventListener('change', () => {
+      const files = Array.from(fileInput.files);
+      if (files.length > 1 && files.every(f => f.type.startsWith('image/'))) {
+        actionSelect.value = 'images_to_pdf';
+      } else if (files.length === 1) {
+        const name = files[0].name.toLowerCase();
+        if (name.endsWith('.docx')) actionSelect.value = 'docx_to_md';
+        else if (name.endsWith('.md') || name.endsWith('.txt')) actionSelect.value = 'md_to_pdf';
+        else if (name.endsWith('.csv')) actionSelect.value = 'csv_to_xlsx';
+      }
+    });
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const files = fileInput.files;
+      if (!files.length) return;
+
+      const formData = new FormData(form);
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', '/api/upload', true);
+
+      pWrap.style.display = 'block';
+      pBar.style.width = '0%';
+      status.innerText = 'Transferring...';
+
+      xhr.upload.onprogress = (evt) => {
+        if (evt.lengthComputable) {
+          const percent = Math.round((evt.loaded / evt.total) * 100);
+          pBar.style.width = percent + '%';
+          status.innerText = `Transferring: ${percent}%`;
+        }
+      };
+
+      xhr.responseType = 'blob';
+      xhr.onload = () => {
+        if (xhr.status === 200) {
+          const disposition = xhr.getResponseHeader('Content-Disposition');
+          if (disposition && disposition.includes('attachment')) {
+            const matches = /filename="([^"]*)"/.exec(disposition);
+            const filename = matches ? matches[1] : 'converted_file';
+            const blobUrl = URL.createObjectURL(xhr.response);
+            const a = document.createElement('a');
+            a.href = blobUrl;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            status.innerText = 'Transferred and downloaded to phone!';
+          } else {
+            xhr.response.text().then((text) => {
+              try {
+                const data = JSON.parse(text);
+                const names = (data.files || []).map((f) => f.name).join(', ');
+                status.innerText = `Saved ${data.count} file(s) to ${data.destination}` + (names ? `: ${names}` : '');
+              } catch (err) {
+                status.innerText = 'Successfully saved directly to PC!';
+              }
+            }).catch(() => { status.innerText = 'Successfully saved directly to PC!'; });
+          }
+        } else {
+          xhr.response.text().then((text) => {
+            let message = 'Upload failed. Check terminal connection.';
+            try {
+              const detail = JSON.parse(text).detail;
+              if (detail) message = detail;
+            } catch (err) { /* keep the generic message */ }
+            status.innerText = message;
+          }).catch(() => { status.innerText = 'Upload failed. Check terminal connection.'; });
+        }
+      };
+      xhr.onerror = () => { status.innerText = 'Network error.'; };
+      xhr.send(formData);
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "quickbeam"
+version = "1.0.0"
+description = "Ephemeral zero-install LAN bridge and in-memory document transformer"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.110.0",
+    "uvicorn[standard]>=0.28.0",
+    "qrcode>=7.4.2",
+    "fpdf2>=2.7.8",
+    "pypdf>=4.0.0",
+    "img2pdf>=0.5.0",
+    "openpyxl>=3.1.2",
+    "pillow>=10.0.0",
+    "pillow-heif>=0.15.0",
+    "python-multipart>=0.0.9",
+]
+
+[project.scripts]
+quickbeam = "quickbeam.main:entrypoint"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+quickbeam = ["static/*.html"]
